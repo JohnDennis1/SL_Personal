@@ -1,0 +1,114 @@
+---
+title: "JD_STAT4610_HW2"
+author: "John Dennis"
+format: pdf
+---
+
+### Problem 1
+
+We're told that
+
+$$
+\hat{\beta}_{ridge} = (\textbf{X}^T\textbf{X}+\lambda \mathbf{I})^{-1}\textbf{X}^T\mathbf{Y}, \ \ \lambda>0
+$$
+
+#### Part A
+
+To prove:
+
+$$
+\mathbb{E}[\mathbf{Z}^T\mathbf{MZ}] = \mu^T\mathbf{M}\mu +tr(\mathbf{M}\Sigma)
+$$
+
+We'll consider the hints where:
+
+$$
+\begin{gathered}
+\mathbf{Z} = (\mathbf{Z} - \mu)+ \mu \\
+\textrm{and} \\
+\Sigma = \mathbb{E}[(\mathbf{Z}-\mu)(\mathbf{Z}-\mu)^T]
+\end{gathered}
+$$
+
+Restating the problem we get a LHS of:
+
+$$
+\begin{gathered}
+\mathbb{E}[\mathbf{Z}^T\mathbf{MZ}] \\
+=\mathbb{E}\Big[\Big((\mathbf{Z}-\mu)+\mu\Big)^T\mathbf{M}\Big((\mathbf{Z}-\mu)+\mu\Big)\Big] \\
+=\mathbb{E}\Big[\Big((\mathbf{Z}-\mu)^T+\mu^T\Big)\mathbf{M}\Big((\mathbf{Z}-\mu)+\mu\Big)\Big] \\
+= \mathbb{E}\Big[\Big((\mathbf{Z}-\mu)^T\mathbf{M}+\mu^T\mathbf{M}\Big)\Big((\mathbf{Z}-\mu)+\mu\Big)\Big] \\
+= \mathbb{E}\Big[
+\underbrace{(\mathbf{Z}-\mu)^T\mathbf{M}(\mathbf{Z}-\mu)}_{\textrm{Term }1} + \underbrace{(\mathbf{Z}-\mu)^T\mathbf{M}\mu}_{\textrm{Term }2} +\underbrace{\mu^T\mathbf{M}(\mathbf{Z}-\mu)}_{\textrm{Term }3} +\underbrace{\mu^T\mathbf{M}\mu}_{\textrm{Term }4}
+\Big]
+\end{gathered}
+$$
+
+From here we can apply $\mathbb{E}[\cdot]$ to each term. We can tackle the middle terms (2,3) easily; Because $\mu$ and $\mathbf{M}$ are "constant, they'll be pulled out of the expectation. Also because $(\cdot)^T$ doesn't affect the averaging process, we can say that $\mathbb{E}[\cdot]^T = \mathbb{E}[(\cdot)^T]$. So simply,
+
+$$
+\mathbb{E}[(\mathbf{Z}-\mu)^T\mathbf{M}\mu] +\mathbb{E}[\mu^T\mathbf{M}(\mathbf{Z}-\mu)] \\
+= \mathbb{E}[(\mathbf{Z}-\mu)^T]\mathbf{M}\mu +\mu^T\mathbf{M}\mathbb{E}[(\mathbf{Z}-\mu)]
+$$
+
+We can rewrite $\mathbb{E}[(\mathbf{Z}-\mu)^T]$ as $\mathbb{E}[(\mathbf{Z}-\mu)]^T$. However, $\mathbb{E}[(\mathbf{Z}-\mu)] = \mu -\mu =0$ so our result for the middle terms comes to $0$.
+
+Next we're left with the first and fourth terms. Handling the fourth term is simple given that $\mathbb{E}[\mu^T\mathbf{M}\mu] =\mu^T\mathbf{M}\mu$
+
+All that's left is the first term. Looking at dimensions, let $\mathbf{Z}$ have dimensions $n\times 1$ so that $\mathbf{Z}-\mu$ has the same dimensions. With this in mind:
+
+$$
+\underset{1\times n}{(\mathbf{Z}-\mu)^T}\ \underset{n\times n}{\mathbf{M}}\ \underset{n\times1}{(\mathbf{Z}-\mu)}=\underset{1\times1}{\mathbf{A}}
+$$
+
+The expectation of $\mathbf{A}$ would just be a scalar. Applying trace to a scalar just results in the scalar. So $\mathbb{E}[\textrm{tr}(\mathbf{A})] = \textrm{tr}(\mathbf{A}) = \mathbf{A}$. This justifies using $\textrm{tr}(\cdot)$ on the argument of the expectation. Another thing to consider is that $\textrm{tr}(\mathbf{ABC})=\textrm{tr}(\mathbf{BCA})$. Lastly, $\mathbb{E}[\textrm{tr}(\cdot)] = \textrm{tr}(\mathbb{E}[\cdot])$
+
+$$
+\begin{aligned}
+\mathbb{E}\Big[\textrm{tr}\Big((\mathbf{Z}-\mu)^T\mathbf{M}(\mathbf{Z}-\mu)\Big)\Big] \\ =\mathbb{E}\Big[\textrm{tr}\Big(\mathbf{M}(\mathbf{Z}-\mu)(\mathbf{Z}-\mu)^T\Big)\Big] \\
+= \textrm{tr}\Big(\mathbb{E}\big[\mathbf{M}(\mathbf{Z}-\mu)(\mathbf{Z}-\mu)^T\big]\Big) \\
+= \textrm{tr}\Big(\mathbf{M}\mathbb{E}\big[(\mathbf{Z}-\mu)(\mathbf{Z}-\mu)^T\big]\Big) \\
+\end{aligned}
+$$
+
+Remembering our hint, $\Sigma=\mathbb{E}\big[(\mathbf{Z}-\mu)(\mathbf{Z}-\mu)^T\big]$ our first term simplifies to:
+
+$$
+\textrm{tr}\big(\mathbf{M}\Sigma\big)
+$$
+
+So altogether we have simplified our LHS to equal the RHS:
+
+$$
+\overset{\checkmark}{\mu^T\mathbf{M}\mu + \textrm{tr}\big(\mathbf{M}\Sigma\big) = \mu^T\mathbf{M}\mu + \textrm{tr}\big(\mathbf{M}\Sigma\big)}
+$$
+
+#### Part B
+
+Restating the problem, $Prove$:
+
+$$
+\begin{gathered}
+\textrm{MSE}(\lambda) = \mathbb{E}\big[(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})^T
+(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})\big] \\
+=\boldsymbol{\beta}^T(\mathbf{I-M}(\lambda)\mathbf{X})^T(\mathbf{I-M}(\lambda)\mathbf{X})\boldsymbol{\beta} + \sigma^2\textrm{tr}(\mathbf{M}(\lambda)^T\mathbf{M}(\lambda)) \\
+\textrm{where}\ \ \mathbf{M}(\lambda) = (\textbf{X}^T\textbf{X}+\lambda \mathbf{I})^{-1}\textbf{X}^T
+\end{gathered}
+$$
+
+Looking at the first line above, we can identify $(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})$ as a $\mathbf{Z}$ from the previous identity. And not seen, is the $\mathbf{M}$ which just equals the identity matrix $\mathbf{I}$. So we can say:
+
+$$
+\textrm{MSE}(\lambda) = \mathbb{E}[\mathbf{Z}^T\mathbf{MZ}] = \mu^T\mathbf{M}\mu +\textrm{tr}(\mathbf{M}\Sigma) \\
+= \mu^T\mathbf{I}\mu +\textrm{tr}(\mathbf{I}\Sigma) = \mu^T\mu +\textrm{tr}(\Sigma)
+$$
+
+#### Part C
+
+bullshit
+
+#### Part D
+
+bullshit
+
+### Problem 2
