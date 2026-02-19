@@ -96,16 +96,73 @@ $$
 \end{gathered}
 $$
 
-Looking at the first line above, we can identify $(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})$ as a $\mathbf{Z}$ from the previous identity. And not seen, is the $\mathbf{M}$ which just equals the identity matrix $\mathbf{I}$. So we can say:
+Looking at the first line above, we can let $\mathbf{Z} \equiv(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})$ from the previous identity proved in Part A. And not seen, is the $\mathbf{M}$ which just equals the identity matrix $\mathbf{I}$. So we can say:
 
 $$
+\begin{gathered}
 \textrm{MSE}(\lambda) = \mathbb{E}[\mathbf{Z}^T\mathbf{MZ}] = \mu^T\mathbf{M}\mu +\textrm{tr}(\mathbf{M}\Sigma) \\
 = \mu^T\mathbf{I}\mu +\textrm{tr}(\mathbf{I}\Sigma) = \mu^T\mu +\textrm{tr}(\Sigma)
+\end{gathered}
+$$
+
+Finding $\mathbb{E}\big[\boldsymbol\beta-\hat{\boldsymbol\beta}\big]$ is simple if we substitute $Y = \mathbf{X}\beta+\epsilon$ and keep in mind that $\hat{\boldsymbol{\beta}}_{ridge} = (\mathbf{X}^T\mathbf{X}+\mathbf{I}\lambda)^{-1}Y = \mathbf{M}(\lambda)Y$:
+
+$$
+\begin{gathered}
+\mathbb{E}\big[\boldsymbol\beta-\hat{\boldsymbol{\beta}}_{ridge}\big] \\
+=\mathbb{E}\big[\boldsymbol\beta\big]-\mathbb{E}\big[\hat{\boldsymbol{\beta}}_{ridge}\big] \\
+= \boldsymbol{\beta} - \mathbb{E}\big[\mathbf{M}(\lambda)Y\big] \\
+= \boldsymbol{\beta} - \mathbb{E}\Big[\mathbf{M}(\lambda)\big(\mathbf{X}\boldsymbol{\beta}+\epsilon\big)\Big] \\
+= \boldsymbol{\beta} - \mathbb{E}\Big[\mathbf{M}(\lambda)\mathbf{X}\boldsymbol{\beta}+\mathbf{M}(\lambda)\epsilon\Big] \\
+\end{gathered}
+$$
+
+From here we can separate the expectation and we know that $\mathbf{M}(\lambda),\mathbf{X},\textrm{and}\  \boldsymbol{\beta}$ are "constant". This means their expectations are just themselves. However, for $\mathbb{E}[\mathbf{M}(\lambda)\epsilon] \rightarrow \mathbf{M}(\lambda)\mathbb{E}[\epsilon] =0$ because we're told that $\epsilon$ consists of uncorrelated, **mean zero** random variables. This greatly simplifies the expression derived above to:
+
+$$
+\begin{gathered}
+\boldsymbol{\beta} - \mathbf{M}(\lambda)\mathbf{X}\boldsymbol{\beta} 
+=\boxed{\big(\mathbf{I}-\mathbf{M}(\lambda)\mathbf{X}\big)\boldsymbol{\beta} = \mu}\\
+\quad \\
+\therefore \ \mu^T = \boldsymbol{\beta}^T\big(\mathbf{I}-\mathbf{M}(\lambda)\mathbf{X}\big)^T
+\end{gathered}
+$$
+
+And to approach the $\textrm{tr}(\Sigma)$ we first have to break down what the covariance matrix of $\mathbf{Z} \equiv(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})$ is. Because we know that $\Sigma = \textrm{Var}(\mathbf{Z})$ we can rewrite this problem as:
+
+$$
+\begin{gathered}
+\Sigma = \textrm{Var}\big((\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})\big) \\
+= \textrm{Var}\big(\boldsymbol{\beta}-\mathbf{M}(\lambda)\mathbf{X}\boldsymbol{\beta}-\mathbf{M}(\lambda)\epsilon\big)
+\end{gathered}
+$$
+
+To evaluate the variance, we'll establish $\mathbf{b} \equiv \boldsymbol{\beta}-\mathbf{M}(\lambda)\mathbf{X}\boldsymbol{\beta}$ and $A\mathbf{X} \equiv -\mathbf{M}(\lambda)\epsilon$. With that, we can apply variance rules such as $\textrm{Var}(A\mathbf{X}+\mathbf{b}) = A\textrm{Var}(\mathbf{X})A^T$. From here, $\textrm{Var}(\mathbf{X})=\textrm{Var}(\epsilon) = \sigma^2\mathbf{I}$. The $\mathbf{b}$ goes away and we're left with:
+
+$$
+\big(-\mathbf{M}(\lambda)\big)(\sigma^2\mathbf{I})\big(-\mathbf{M}(\lambda)\big)^T = \boxed{ \sigma^2\mathbf{M}(\lambda)\mathbf{M}(\lambda)^T = \Sigma}
+$$ Lastly applying the trace to $\Sigma$ we can use its property of $\textrm{tr}(AB)=\textrm{tr}(BA)$ and move the constant out front:
+
+$$
+\textrm{tr}(\sigma^2\mathbf{M}(\lambda)\mathbf{M}(\lambda)^T) = \boxed{ \sigma^2\textrm{tr}\big(\mathbf{M}(\lambda)^T\mathbf{M}(\lambda)\big)= \textrm{tr}(\Sigma)}
+$$
+
+Putting it all together:
+
+$$
+\begin{gathered}
+\textrm{MSE}(\lambda) = \mathbb{E}\big[(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})^T
+(\boldsymbol{\beta}-\hat{\boldsymbol{\beta}}_{ridge})\big] \\
+= \mu^T\mathbf{I}\mu +\textrm{tr}(\mathbf{I}\Sigma) = \mu^T\mu +\textrm{tr}(\Sigma) \\
+= \boldsymbol{\beta}^T\big(\mathbf{I}-\mathbf{M}(\lambda)\mathbf{X}\big)^T \big(\mathbf{I}-\mathbf{M}(\lambda)\mathbf{X}\big)\boldsymbol{\beta} + 
+\sigma^2\textrm{tr}\big(\mathbf{M}(\lambda)^T\mathbf{M}(\lambda)\big)\\
+\blacksquare
+\end{gathered}
 $$
 
 #### Part C
 
-bullshit
+Finding the MSE for the OLS estimators just means
 
 #### Part D
 
