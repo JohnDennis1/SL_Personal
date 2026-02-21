@@ -162,10 +162,76 @@ $$
 
 #### Part C
 
-Finding the MSE for the OLS estimators just means
+Finding the MSE for the OLS estimators just means evaluating $\mathbf{M}(0)$ and simplifying the rest of the expression. $\mathbf{M}(0)$ simply equals
+
+$$
+\mathbf{M}(0)=(\textbf{X}^T\textbf{X}+(0) \mathbf{I})^{-1}\textbf{X}^T = (\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T
+$$ So from here we can sub $\mathbf{M}(0)$ into $\textrm{MSE}(\lambda)$
+
+$$
+\begin{gathered}
+\textrm{MSE(0)}=\boldsymbol{\beta}^T\big(\mathbf{I}-\mathbf{M}(0)\mathbf{X}\big)^T \big(\mathbf{I}-\mathbf{M}(0)\mathbf{X}\big)\boldsymbol{\beta} + 
+\sigma^2\textrm{tr}\big(\mathbf{M}(0)^T\mathbf{M}(0)\big) \\
+= \boldsymbol{\beta}^T\big(\mathbf{I}-\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\mathbf{X}\big)^T
+\big(\mathbf{I}-\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\mathbf{X}\big)\boldsymbol{\beta} + 
+\sigma^2\textrm{tr}\Big(\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T
+\big)^T\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\Big)
+\end{gathered}
+$$
+
+The $\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\mathbf{X}$ part simplifies to $\mathbf{I}$ because it's a matrix multiplied by it's inverse. To the left of the addition sign simplifies easily:
+
+$$
+\begin{gathered}
+\boldsymbol{\beta}^T\big(\mathbf{I}-\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\mathbf{X}\big)^T
+\big(\mathbf{I}-\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\mathbf{X}\big)\boldsymbol{\beta} \\
+= \boldsymbol{\beta}^T(\mathbf{I}-\mathbf{I})^T(\mathbf{I}-\mathbf{I})\boldsymbol{\beta} = 0
+\end{gathered}
+$$
+
+The remaining expression for the $\textrm{MSE}(0)$ is much simpler and will require some manipulation to simplify entirely.
+
+$$
+\begin{gathered}
+\textrm{MSE}(0) = \sigma^2\textrm{tr}\Big(\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T
+\big)^T\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\Big)\\
+= \sigma^2\textrm{tr}\Big(\big(\textbf{X}(\textbf{X}^T\textbf{X})^{-1}
+\big)\big((\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\big)\Big)
+\end{gathered}
+$$
+
+We'll let $\mathbf{A}=\mathbf{X}$ and $\mathbf{B}=(\textbf{X}^T\textbf{X})^{-1}(\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T$ and use that $\textrm{tr}(AB)=\textrm{tr}(BA)$:
+
+$$
+\textrm{MSE}(0) =\sigma^2\textrm{tr}\Big((\textbf{X}^T\textbf{X})^{-1}
+(\textbf{X}^T\textbf{X})^{-1}\textbf{X}^T\textbf{X}\Big)
+= \boxed{\sigma^2\textrm{tr}\Big((\textbf{X}^T\textbf{X})^{-1}
+\mathbf{I}\Big)}
+$$
 
 #### Part D
 
-bullshit
+With only one feature, our $\mathbf{M}(\lambda)$ changes to $\frac{\textbf{x}^T}{\sum x_i^2+\lambda}$ and $\textrm{MSE}(\lambda)$ changes to:
 
-### Problem 2
+$$
+\begin{gathered}
+\textrm{MSE}(\lambda) = \boldsymbol{\beta}_1\big(1-\mathbf{M}(\lambda)\mathbf{X}\big)^T \big(1-\mathbf{M}(\lambda)\mathbf{X}\big)\boldsymbol{\beta}_1 + 
+\sigma^2\textrm{tr}\big(\mathbf{M}(\lambda)^T\mathbf{M}(\lambda)\big) \\
+= \boldsymbol{\beta}_1^2\bigg(1-\frac{\textbf{x}^T\mathbf{x}}{\sum x_i^2+\lambda}\bigg)^T
+\bigg(1-\frac{\textbf{x}^T\mathbf{x}}{\sum x_i^2+\lambda}\bigg) + 
+\sigma^2\textrm{tr}\bigg(\frac{\textbf{x}^T}{\sum x_i^2+\lambda}\Big(\frac{\textbf{x}^T}{\sum x_i^2+\lambda}\Big)^T\bigg) \\
+= \boldsymbol{\beta}_1^2\bigg(\frac{\sum x_i^2+\lambda}{\sum x_i^2+\lambda}-\frac{\sum x_i^2}{\sum x_i^2+\lambda}\bigg)^2 +
+\sigma^2\bigg(\frac{\textbf{x}^T}{\sum x_i^2+\lambda}\Big(\frac{\textbf{x}}{\sum x_i^2+\lambda}\Big)\bigg) \\
+= \boldsymbol{\beta}_1^2\bigg(\frac{\lambda}{\sum x_i^2+\lambda}\bigg)^2+
+\sigma^2\bigg(\frac{\sum x_i^2}{\big(\sum x_i^2+\lambda\big)^2}\bigg)\\
+\boxed{\textrm{MSE}_{p=1}(\lambda)= \frac{\boldsymbol{\beta}_1^2\lambda^2+\sigma^2\sum x_i^2}{\big(\sum x_i^2+\lambda\big)^2}} \\
+\quad \\
+\boxed{\textrm{MSE}_{p=1}(0) = \frac{\sigma^2}{\sum x_i^2}}
+\end{gathered}
+$$
+
+After looking at the two MSEs, as long as $\lambda$ follows the inequality below, ridge regression will have a lower MSE than standard OLS
+
+$$
+\boxed{\lambda < \frac{2\sigma^2\sum x_i^2}{(\sum x_i^2)\beta_1^2 - \sigma^2}}
+$$
