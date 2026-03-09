@@ -1,0 +1,6 @@
+---
+title: "JD_STAT4610_HW3"
+author: "John Dennis"
+format: pdf
+---
+
