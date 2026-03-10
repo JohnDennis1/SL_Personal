@@ -1,21 +1,93 @@
 ---
-title: "JD_STAT4610_HW3"
+title: "STAT4610_HW3"
 author: "John Dennis"
 format: pdf
 ---
 
-```{r,message=FALSE}
+```{r,message=FALSE,echo=FALSE}
 library(ISLR2)
 library(tidyverse)
+library(ggplot2)
 ```
 
-### Problem 1/2
+### Problem 1
 
 #### Part A
 
+To find the prob that $x^{\ast 1}$ is *not* $x_1$ is simply the complement that it is. Because there are n samples, that means that there's a $\frac{1}{n}$ chance that it's the same. That means the complement is just that probability subtracted from one or:
+
 $$
-\frac{n-1}{n}
+1-\frac{1}{n}=\boxed{\frac{n-1}{n}}
 $$
+
+#### Part B
+
+To find the prob that neither $x^{\ast 1}$ nor $x^{\ast 2}$ include $x_1$ we must take the previous problem and just add on. The first prob is $\frac{n-1}{n}$. And since each draw is independent, the probability that $x^{\ast 2}$ is not $x_1$ is also $\frac{n-1}{n}$. Multiplying the two and we get:
+
+$$
+\bigg(1-\frac{1}{n}\bigg) \times \bigg(1-\frac{1}{n}\bigg) = \boxed{\bigg(1-\frac{1}{n}\bigg)^2}
+$$
+
+#### Part C
+
+Again, just another extension. For a sample size of $n$ we simply multiply the probability we already found in A by itself $n$ times:
+
+$$
+\boxed{\bigg(1-\frac{1}{n}\bigg)^n}
+$$
+
+#### Part D
+
+If we evaluate $\lim_{n \rightarrow \infty}$ of the probability we're building on, we'll find the prob that as $n \rightarrow \infty$ that the bootstrapped data set won't have $x_1$. So we simply take the complement of what we find:
+
+$$
+1-\lim_{n \rightarrow \infty}\bigg(1-\frac{1}{n}\bigg)^n = 1 - e^{-1} \approx 0.6321206
+$$
+
+#### Part E
+
+```{r}
+n=100
+store <- rep(NA, 200)
+for (i in 1:200) {
+store[i] <- sum(sample(1:n, replace=TRUE) == 7) > 0
+}
+mean(store)
+```
+
+In this problem `mean(store)` is counting the number of times the sample contains 7 at least once out of the total sample or the probability that that 7 shows up in a sample. It is what I expected because it's essentially n=200 of our previous probability so it should start approaching $1-e^{-1}$.
+
+#### Part F
+
+```{r,echo=FALSE}
+n_values <- 1:1000
+sim_results <- numeric(1000)
+
+set.seed(307)
+for (n in n_values) {
+  # Perform exactly one simulation per value of n
+  sim_results[n] <- any(sample(1:n, size = n, replace = TRUE) == 1)
+}
+
+plot_data <- data.frame(
+  n = n_values,
+  In_Sample = as.numeric(sim_results)
+)
+
+ggplot(plot_data, aes(x = n, y = In_Sample)) +
+  # Single simulation points at 0 or 1
+  geom_point(alpha = 0.2, color = "red", size = 0.5) +
+  # The theoretical limit you calculated in Part D
+  geom_hline(yintercept = 1 - exp(-1), color = "blue", size = 1) +
+  annotate("text", x = 750, y = 0.68, label = "Limit: 0.632", color = "blue") +
+  labs(
+    title = "Bootstrap Inclusion: Simulation vs. Theoretical Limit",
+    subtitle = "Red dots = Single simulation (1 = x1 present, 0 = x1 absent)",
+    x = "Sample Size (n)",
+    y = "Inclusion Probability"
+  ) +
+  theme_bw()
+```
 
 ### Problem 3
 
