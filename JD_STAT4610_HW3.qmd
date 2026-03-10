@@ -4,3 +4,23 @@ author: "John Dennis"
 format: pdf
 ---
 
+```{r,message=FALSE}
+library(ISLR2)
+library(tidyverse)
+```
+
+### Problem 1/2
+
+#### Part A
+
+$$
+\frac{n-1}{n}
+$$
+
+### Problem 3
+
+```{r}
+data(College)
+```
+
+This data set contains information on a large number of US College from the 1995 issue of the US News and World Report. In our case $Y$ will be `Grad.Rate`. We'll be attempting to predict using factors such as if the university is Private or not, Number of new students enrolled, Pct. of new students from the top 10% of H.S. Class, and so on. More specifically $\mathbf{X}$ will be `Private`, `Enroll`, `Top10perc`, `Top25perc`, `F.Undergrad`, `P.Undergrad`, `Room.Board`, `Books`, `Personal`, `PhD`, `Terminal`, `S.F.Ratio`, `perc.alumni`, and `Expend` (p=14).
