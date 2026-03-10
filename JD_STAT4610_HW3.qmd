@@ -89,6 +89,30 @@ ggplot(plot_data, aes(x = n, y = In_Sample)) +
   theme_bw()
 ```
 
+#### Part G
+
+$$
+\begin{gathered}
+Var(\bar{x}) = Var\left(\frac{1}{n}\sum_{i=1}^{n}x_i\right) \\
+= \frac{1}{n^2} Var\left(\sum_{i=1}^{n}x_i\right) \\
+= \frac{1}{n^2} \sum_{i=1}^{n} Var(x_i) \\
+= \frac{1}{n^2} (n\sigma^2) \\
+\boxed{= \frac{\sigma^2}{n}}
+\end{gathered}
+$$
+
+#### Part H
+
+$$
+\begin{gathered}
+Var(\bar{x}) = Var\left(\frac{1}{n}\sum_{i=1}^{n}x_i\right) \\
+= \frac{1}{n^2} \left[ \sum_{i=1}^{n}Var(x_i) + \sum_{i \neq j}Cov(x_i, x_j) \right] \\
+= \frac{1}{n^2} \left[ n\sigma^2 + n(n-1)\rho\sigma^2 \right] \\
+= \frac{\sigma^2}{n} + \frac{n(n-1)\rho\sigma^2}{n^2} \\
+\boxed{= \rho\sigma^2 + \frac{1-\rho}{n}\sigma^2}
+\end{gathered}
+$$
+
 ### Problem 3
 
 ```{r}
