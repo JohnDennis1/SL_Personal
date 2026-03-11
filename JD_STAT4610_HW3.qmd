@@ -15,7 +15,122 @@ library(ggplot2)
 #### Part A
 
 To find the prob that $x^{\ast 1}$ is *not* $x_1$ is simply the complement that it is. Because there are n samples, that means that there's a $\frac{1}{n}$ chance that it's the same. That means the complement is just that probability subtracted from one or:
+---
+title: "STAT4610_HW3"
+author: "John Dennis"
+format: pdf
+---
 
+```{r,message=FALSE,echo=FALSE}
+library(ISLR2)
+library(tidyverse)
+library(ggplot2)
+```
+
+### Problem 1
+
+#### Part A
+
+To find the prob that $x^{\ast 1}$ is *not* $x_1$ is simply the complement that it is. Because there are n samples, that means that there's a $\frac{1}{n}$ chance that it's the same. That means the complement is just that probability subtracted from one or:
+
+$$
+1-\frac{1}{n}=\boxed{\frac{n-1}{n}}
+$$
+
+#### Part B
+
+To find the prob that neither $x^{\ast 1}$ nor $x^{\ast 2}$ include $x_1$ we must take the previous problem and just add on. The first prob is $\frac{n-1}{n}$. And since each draw is independent, the probability that $x^{\ast 2}$ is not $x_1$ is also $\frac{n-1}{n}$. Multiplying the two and we get:
+
+$$
+\bigg(1-\frac{1}{n}\bigg) \times \bigg(1-\frac{1}{n}\bigg) = \boxed{\bigg(1-\frac{1}{n}\bigg)^2}
+$$
+
+#### Part C
+
+Again, just another extension. For a sample size of $n$ we simply multiply the probability we already found in A by itself $n$ times:
+
+$$
+\boxed{\bigg(1-\frac{1}{n}\bigg)^n}
+$$
+
+#### Part D
+
+If we evaluate $\lim_{n \rightarrow \infty}$ of the probability we're building on, we'll find the prob that as $n \rightarrow \infty$ that the bootstrapped data set won't have $x_1$. So we simply take the complement of what we find:
+
+$$
+1-\lim_{n \rightarrow \infty}\bigg(1-\frac{1}{n}\bigg)^n = 1 - e^{-1} \approx 0.6321206
+$$
+
+#### Part E
+
+```{r}
+n=100
+store <- rep(NA, 200)
+for (i in 1:200) {
+store[i] <- sum(sample(1:n, replace=TRUE) == 7) > 0
+}
+mean(store)
+```
+
+In this problem `mean(store)` is counting the number of times the sample contains 7 at least once out of the total sample or the probability that that 7 shows up in a sample. It is what I expected because it's essentially n=200 of our previous probability so it should start approaching $1-e^{-1}$.
+
+#### Part F
+
+```{r,echo=FALSE}
+n_values <- 1:1000
+sim_results <- numeric(1000)
+
+set.seed(307)
+for (n in n_values) {
+  # Perform exactly one simulation per value of n
+  sim_results[n] <- any(sample(1:n, size = n, replace = TRUE) == 1)
+}
+
+plot_data <- data.frame(
+  n = n_values,
+  In_Sample = as.numeric(sim_results)
+)
+```
+
+#### Part G
+
+$$
+\begin{gathered}
+Var(\bar{x}) = Var\left(\frac{1}{n}\sum_{i=1}^{n}x_i\right) \\
+= \frac{1}{n^2} Var\left(\sum_{i=1}^{n}x_i\right) \\
+= \frac{1}{n^2} \sum_{i=1}^{n} Var(x_i) \\
+= \frac{1}{n^2} (n\sigma^2) \\
+\boxed{= \frac{\sigma^2}{n}}
+\end{gathered}
+$$
+
+#### Part H
+
+$$
+\begin{gathered}
+Var(\bar{x}) = Var\left(\frac{1}{n}\sum_{i=1}^{n}x_i\right) \\
+= \frac{1}{n^2} \left[ \sum_{i=1}^{n}Var(x_i) + \sum_{i \neq j}Cov(x_i, x_j) \right] \\
+= \frac{1}{n^2} \left[ n\sigma^2 + n(n-1)\rho\sigma^2 \right] \\
+= \frac{\sigma^2}{n} + \frac{n(n-1)\rho\sigma^2}{n^2} \\
+\boxed{= \rho\sigma^2 + \frac{1-\rho}{n}\sigma^2}
+\end{gathered}
+$$
+
+### Problem 3
+
+```{r}
+data(College)
+```
+
+#### Part 1
+
+This data set contains information on a large number of US College from the 1995 issue of the US News and World Report. In our case $Y$ will be `Grad.Rate`. We'll be attempting to predict using factors such as if the university is Private or not, Number of new students enrolled, Pct. of new students from the top 10% of H.S. Class, and so on. More specifically $\mathbf{X}$ will be `Private`, `Enroll`, `Top10perc`, `Top25perc`, `F.Undergrad`, `P.Undergrad`, `Room.Board`, `Books`, `Personal`, `PhD`, `Terminal`, `S.F.Ratio`, `perc.alumni`, and `Expend` (p=14).
+
+#### Part 2: Q1
+
+The research question that we aim to answer or gain insight on is that given a certain school's demographics and institutional characteristics, can we predict the graduation rate? Not only that, but what are the most important factors to contributing to that rate.
+
+The results provide valuable information for both the institutions and prospective students. From the University's side, identifying factors that have great influence to their graduation rate will allow them to prioritize those aspects. By potentially increasing funding or resource allocation to target those factors, they may also be able to increase enrollment rates or general interest in their school.
 $$
 1-\frac{1}{n}=\boxed{\frac{n-1}{n}}
 $$
