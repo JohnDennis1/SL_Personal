@@ -6,8 +6,12 @@ format: pdf
 
 ```{r,message=FALSE,echo=FALSE}
 library(ISLR2)
-library(tidyverse)
 library(ggplot2)
+library(gbm)
+library(BART)
+library(tree)
+library(dplyr)
+library(randomForest)
 ```
 
 ### Problem 1
@@ -65,26 +69,27 @@ sim_results <- numeric(1000)
 
 set.seed(307)
 for (n in n_values) {
-  # Perform exactly one simulation per value of n
+
   sim_results[n] <- any(sample(1:n, size = n, replace = TRUE) == 1)
 }
 
 plot_data <- data.frame(
   n = n_values,
-  In_Sample = as.numeric(sim_results)
+  In_Sample = as.numeric(sim_results),
+  theoretical_p = 1 - (1 - 1/n_values)^n_values
 )
 
 ggplot(plot_data, aes(x = n, y = In_Sample)) +
-  # Single simulation points at 0 or 1
-  geom_point(alpha = 0.2, color = "red", size = 0.5) +
-  # The theoretical limit you calculated in Part D
-  geom_hline(yintercept = 1 - exp(-1), color = "blue", size = 1) +
-  annotate("text", x = 750, y = 0.68, label = "Limit: 0.632", color = "blue") +
+  
+  geom_point(alpha = 0.2, color = "skyblue", size = 0.5) +
+
+  geom_line(aes(y = theoretical_p), color = "magenta", size = 1) +
+  geom_hline(yintercept = 1 - exp(-1), linetype = "dashed") +
   labs(
-    title = "Bootstrap Inclusion: Simulation vs. Theoretical Limit",
-    subtitle = "Red dots = Single simulation (1 = x1 present, 0 = x1 absent)",
+    title = "Probability that x1 is in the Bootstrap Sample",
+    subtitle = "Simulation vs. Theoretical Curve",
     x = "Sample Size (n)",
-    y = "Inclusion Probability"
+    y = "Probability"
   ) +
   theme_bw()
 ```
@@ -117,14 +122,130 @@ $$
 
 ```{r}
 data(College)
+
+college_clean <- College %>%
+  select(Grad.Rate, Private, Enroll, Top10perc, Top25perc, 
+         F.Undergrad, P.Undergrad, Room.Board, Books, 
+         Personal, PhD, Terminal, S.F.Ratio, perc.alumni, Expend)
 ```
 
 #### Part 1
 
 This data set contains information on a large number of US College from the 1995 issue of the US News and World Report. In our case $Y$ will be `Grad.Rate`. We'll be attempting to predict using factors such as if the university is Private or not, Number of new students enrolled, Pct. of new students from the top 10% of H.S. Class, and so on. More specifically $\mathbf{X}$ will be `Private`, `Enroll`, `Top10perc`, `Top25perc`, `F.Undergrad`, `P.Undergrad`, `Room.Board`, `Books`, `Personal`, `PhD`, `Terminal`, `S.F.Ratio`, `perc.alumni`, and `Expend` (p=14).
 
-#### Part 2: Q1
+#### Parts 2,3,4: Q1
 
-The research question that we aim to answer or gain insight on is that given a certain school's demographics and institutional characteristics, can we predict the graduation rate? Not only that, but what are the most important factors to contributing to that rate.
+The research question that we aim to answer or gain insight on is that given a certain school's demographics and institutional characteristics, can we predict the graduation rate? Not only that, but what are the most important factors to contributing to that rate. We'll be using tree based methods and Cross Validation to tune parameters to refine a model to predict the grad rate from $\mathbf{X}$
 
 The results provide valuable information for both the institutions and prospective students. From the University's side, identifying factors that have great influence to their graduation rate will allow them to prioritize those aspects. By potentially increasing funding or resource allocation to target those factors, they may also be able to increase enrollment rates or general interest in their school.
+
+The reason tree-based methods seem appropriate is that there likely exist non-linear relationships between the predictors and the response. Rather than attempting to use linear/multiple linear regression to model these relationships, trees will take an entirely different approach bypassing the non-linear constraint. Additionally, Ensemble Methods such as bagging and random forests will provide more robustness than a simple regression tree.
+
+#### Parts 5,6: Q2
+
+##### Data split
+
+```{r,echo=FALSE}
+set.seed(303)
+rows <- sample(1:nrow(college_clean), size = floor(0.20*nrow(college_clean)), replace = FALSE)
+
+validation_set <- college_clean[rows,]
+CV_set <- college_clean[-rows,]
+```
+
+##### Regression Tree
+
+I fit a regression tree using `tree` and then use `cv.tree` for the CV. I then plot the results in terms of the MSE not deviance as is the usual output for `cv.tree`.
+
+```{r,echo=FALSE}
+#Creating the tree model and seeing information about it
+regTree <- tree(Grad.Rate~.,data=CV_set)
+#summary(regTree)
+
+#Performing CV on it and finding num of Nodes with lowest dev
+cv_regTree <- cv.tree(regTree)
+best_regTree_size <- cv_regTree$size[which.min(cv_regTree$dev)]
+best_regTree_MSE <- min(cv_regTree$dev)/nrow(college_clean)
+
+#Plotting to see how Tree size affects MSE
+plot(cv_regTree$size, cv_regTree$dev/nrow(college_clean), type = "b", 
+     xlab = "Tree Size (Number of Terminal Nodes)", 
+     ylab = "CV MSE")
+
+cat(sprintf("After doing Cross Validation to determine the best size of tree \n
+I've found that %d is the best size with an MSE of %.3f (RMSE = %.3f)", best_regTree_size, best_regTree_MSE,sqrt(best_regTree_MSE)))
+```
+
+The plot shows that, initially, we can expect a large drop off in the MSE as the number of terminal nodes increase. As the number of terminal nodes increase, the MSE doesn't necessarily improve and this can be attributed to the fact that the model may be trying to "memorize" noise that doesn't improve it.
+
+##### Bagging
+
+```{r,echo=FALSE}
+#The randomForest function automatically runs OOB and we set mtry to 14 because there's p predictors
+bag <- randomForest(Grad.Rate~.,data=CV_set,mtry=dim(CV_set)[2]-1,importance=TRUE,ntree=500)
+#We can grab the best mse using the following code
+bag_oob_MSE <- bag$mse[length(bag$mse)]
+#plotting for further commentary
+plot(bag)
+```
+
+##### Random Forests
+
+```{r,echo=FALSE}
+nodesize.values <- seq(from = 1, to = 21, by = 5)
+mtry.values <- 1:13 #13 predictors excluding the last because of the previous bagging.
+
+oob.MSE <- matrix(NA, nrow = length(nodesize.values), ncol = length(mtry.values)) # Matrix to store OOB errors
+
+for (i in 1:length(nodesize.values)) {
+for (j in 1:length(mtry.values)) {
+rf.tuned <- randomForest(Grad.Rate ~ ., data = CV_set, nodesize = nodesize.values[i], mtry = mtry.values[j])
+oob.MSE[i, j] <- rf.tuned$mse[length(rf.tuned$mse)]
+}
+}
+# Create a data frame for ggplot
+plot.data <- expand.grid(nodesize = nodesize.values, mtry = mtry.values)
+plot.data$OOB_MSE <- as.vector(oob.MSE)
+# Plot using ggplot2 (faceted by mtry)
+ggplot(plot.data, aes(x = nodesize, y = OOB_MSE)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ mtry, labeller = label_both) + # Facet by mtry
+  labs(title = "OOB MSE vs. nodesize and mtry",
+    x = "nodesize",
+    y = "OOB MSE") +
+  theme_bw()
+
+#Finding which plot has the best parameters
+best_params <- plot.data[which.min(plot.data$OOB_MSE), ]
+
+bestRF <-randomForest(Grad.Rate~.,data = CV_set, nodesize = best_params$nodesize, mtry = best_params$mtry)
+```
+
+##### Boosting
+
+```{r,echo=FALSE}
+boost <- gbm(Grad.Rate~.,distribution = 'gaussian',data=CV_set,n.trees=500,interaction.depth=3,shrinkage=0.01,cv.folds = 10)
+
+optNumIterations <- gbm.perf(boost, method = "cv")
+
+boost_preds <- predict(boost, 
+                       newdata = validation_set, 
+                       n.trees = optNumIterations)
+
+# Calculate your final Validation MSE for the boosting model
+boost_validation_mse <- mean((validation_set$Grad.Rate - boost_preds)^2)
+```
+
+##### BART
+
+```{r,echo=FALSE}
+#predictors need to be separated
+x_train <- model.matrix(Grad.Rate ~ ., data = CV_set)[, -1]
+y_train <- CV_set$Grad.Rate # response
+
+x_test <- model.matrix(Grad.Rate ~ ., data = validation_set)[, -1]
+y_test <- validation_set$Grad.Rate
+
+bart <- wbart(x.train = x_train, y.train = y_train, x.test = x_test)
+```
