@@ -120,7 +120,7 @@ $$
 
 ### Problem 3
 
-```{r}
+```{r,echo=FALSE}
 data(College)
 
 college_clean <- College %>%
@@ -135,13 +135,13 @@ This data set contains information on a large number of US College from the 1995
 
 #### Parts 2,3,4: Q1
 
-The research question that we aim to answer or gain insight on is that given a certain school's demographics and institutional characteristics, can we predict the graduation rate? Not only that, but what are the most important factors to contributing to that rate. We'll be using tree based methods and Cross Validation to tune parameters to refine a model to predict the grad rate from $\mathbf{X}$
+The research question that we aim to answer or gain insight on is that given a certain school's demographics and institutional characteristics, can we predict the graduation rate? Not only that, but what are the most important factors to contributing to that rate. We'll be using tree based methods and Cross Validation to tune parameters to refine a model to predict the grad rate from $\mathbf{X}$.
 
 The results provide valuable information for both the institutions and prospective students. From the University's side, identifying factors that have great influence to their graduation rate will allow them to prioritize those aspects. By potentially increasing funding or resource allocation to target those factors, they may also be able to increase enrollment rates or general interest in their school.
 
 The reason tree-based methods seem appropriate is that there likely exist non-linear relationships between the predictors and the response. Rather than attempting to use linear/multiple linear regression to model these relationships, trees will take an entirely different approach bypassing the non-linear constraint. Additionally, Ensemble Methods such as bagging and random forests will provide more robustness than a simple regression tree.
 
-#### Parts 5,6: Q2
+#### Parts 5 and 6: Q2
 
 ##### Data split
 
@@ -158,22 +158,30 @@ CV_set <- college_clean[-rows,]
 I fit a regression tree using `tree` and then use `cv.tree` for the CV. I then plot the results in terms of the MSE not deviance as is the usual output for `cv.tree`.
 
 ```{r,echo=FALSE}
-#Creating the tree model and seeing information about it
+#creating the tree model and seeing information about it
 regTree <- tree(Grad.Rate~.,data=CV_set)
 #summary(regTree)
 
-#Performing CV on it and finding num of Nodes with lowest dev
+#performing CV on it and finding num of Nodes with lowest dev
 cv_regTree <- cv.tree(regTree)
 best_regTree_size <- cv_regTree$size[which.min(cv_regTree$dev)]
 best_regTree_MSE <- min(cv_regTree$dev)/nrow(college_clean)
 
-#Plotting to see how Tree size affects MSE
+#plotting to see how Tree size affects MSE
 plot(cv_regTree$size, cv_regTree$dev/nrow(college_clean), type = "b", 
      xlab = "Tree Size (Number of Terminal Nodes)", 
      ylab = "CV MSE")
 
 cat(sprintf("After doing Cross Validation to determine the best size of tree \n
-I've found that %d is the best size with an MSE of %.3f (RMSE = %.3f)", best_regTree_size, best_regTree_MSE,sqrt(best_regTree_MSE)))
+I've found that %d is the best size with a CV MSE of %.3f (RMSE = %.3f). ", best_regTree_size, best_regTree_MSE,sqrt(best_regTree_MSE)))
+
+pruned_tree <- prune.tree(regTree, best = best_regTree_size)
+
+tree_preds <- predict(pruned_tree, newdata = validation_set)
+tree_validation_mse <- mean((validation_set$Grad.Rate - tree_preds)^2)
+
+cat(sprintf("The final Validation MSE for the pruned tree is: %.3f (RMSE = %.3f)", tree_validation_mse,
+            sqrt(tree_validation_mse)))
 ```
 
 The plot shows that, initially, we can expect a large drop off in the MSE as the number of terminal nodes increase. As the number of terminal nodes increase, the MSE doesn't necessarily improve and this can be attributed to the fact that the model may be trying to "memorize" noise that doesn't improve it.
@@ -181,12 +189,21 @@ The plot shows that, initially, we can expect a large drop off in the MSE as the
 ##### Bagging
 
 ```{r,echo=FALSE}
-#The randomForest function automatically runs OOB and we set mtry to 14 because there's p predictors
+#the randomForest function automatically runs OOB and we set mtry to 14 because there's p predictors
 bag <- randomForest(Grad.Rate~.,data=CV_set,mtry=dim(CV_set)[2]-1,importance=TRUE,ntree=500)
-#We can grab the best mse using the following code
+#we can grab the best mse using the following code
 bag_oob_MSE <- bag$mse[length(bag$mse)]
 #plotting for further commentary
 plot(bag)
+
+#making predictions with bag model
+bag_preds <- predict(bag, newdata = validation_set)
+
+#finding final Validation MSE
+bag_validation_mse <- mean((validation_set$Grad.Rate - bag_preds)^2)
+
+cat(sprintf("The final Validation MSE for Bagging is: %.3f (RMSE = %.3f)", bag_validation_mse,
+            sqrt(bag_validation_mse)))
 ```
 
 ##### Random Forests
@@ -216,10 +233,19 @@ ggplot(plot.data, aes(x = nodesize, y = OOB_MSE)) +
     y = "OOB MSE") +
   theme_bw()
 
-#Finding which plot has the best parameters
+#finding the plot that has the best parameters
 best_params <- plot.data[which.min(plot.data$OOB_MSE), ]
 
-bestRF <-randomForest(Grad.Rate~.,data = CV_set, nodesize = best_params$nodesize, mtry = best_params$mtry)
+bestRF <-randomForest(Grad.Rate~.,data = CV_set, nodesize = best_params$nodesize, mtry = best_params$mtry, importance=TRUE)
+
+#use the best rand forest for validation set predictions
+rf_preds <- predict(bestRF, newdata = validation_set)
+
+#find the validation mse
+rf_validation_mse <- mean((validation_set$Grad.Rate - rf_preds)^2)
+
+cat(sprintf("The final Validation MSE for the Random Forest is: %.3f (RMSE = %.3f)", rf_validation_mse,
+            sqrt(rf_validation_mse)))
 ```
 
 ##### Boosting
@@ -229,12 +255,21 @@ boost <- gbm(Grad.Rate~.,distribution = 'gaussian',data=CV_set,n.trees=500,inter
 
 optNumIterations <- gbm.perf(boost, method = "cv")
 
+cat(sprintf("The optimal number of trees is %d. ",optNumIterations))
+
 boost_preds <- predict(boost, 
                        newdata = validation_set, 
                        n.trees = optNumIterations)
 
-# Calculate your final Validation MSE for the boosting model
+#This will identify which factors had the highest influence (how much squared error was reduced)
+#boost_importance <- summary(boost, n.trees = optNumIterations, 
+#                            main = "Boosting Relative Influence")
+
+#finding validation mse for the boosting model
 boost_validation_mse <- mean((validation_set$Grad.Rate - boost_preds)^2)
+
+cat(sprintf("The final Validation MSE for Boosting is: %.3f (RMSE = %.3f)", boost_validation_mse,
+            sqrt(boost_validation_mse)))
 ```
 
 ##### BART
@@ -247,5 +282,116 @@ y_train <- CV_set$Grad.Rate # response
 x_test <- model.matrix(Grad.Rate ~ ., data = validation_set)[, -1]
 y_test <- validation_set$Grad.Rate
 
-bart <- wbart(x.train = x_train, y.train = y_train, x.test = x_test)
+#making model
+invisible(capture.output(
+  bart <- wbart(x.train = x_train,
+                y.train = y_train,
+                x.test = x_test,
+                printevery = 10000)
+))
+
+#finding validation mse
+bart_validation_mse <- mean((y_test - bart$yhat.test.mean)^2)
+
+#identifying most important variables
+bart_importance <- colMeans(bart$varcount)
+
+#sort them for ease of calling
+bart_importance <- sort(bart_importance, decreasing = TRUE)
+
+cat(sprintf("The final Validation MSE for BART is: %.3f (RMSE = %.3f)", bart_validation_mse,
+            sqrt(bart_validation_mse)))
 ```
+
+##### Validation set MSE Comparison
+
+After buildng each model, training, and evaluating the best model based on validation set MSE, our best model is the random forests with `nodesize` 6 and `mtry` 3. Its validation set MSE was the lowest of all the models by a tight margin. The ensemble methods performed pretty similarly which is expected, with the tuning giving the random forests the edge. Naturally, all models exhibited significant improvement throughout the tuning process.
+
+#### Parts 7,8, and 9: Q3
+
+To answer our questions, we must look at the model performance and then also how each model ranked importance to each variable.
+
+First let's address the Validation set MSEs by model.
+
+```{r,echo=FALSE}
+model_names <- c("Reg Tree", "Bagging", "Random Forest", "Boosting", "BART")
+
+# Create a vector of the variables storing your final MSE calculations
+validation_mses <- c(tree_validation_mse, bag_validation_mse, rf_validation_mse, boost_validation_mse, bart_validation_mse)
+
+# Bind them together into a data frame
+mse_df <- data.frame(Model = model_names, MSE = validation_mses)
+
+mse_df$Model <- reorder(mse_df$Model, mse_df$MSE)
+
+ggplot(mse_df, aes(x = Model, y = MSE, fill = Model)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  geom_text(aes(label = round(MSE, 2)), vjust = -0.5, fontface = "bold") + # Adds the numbers on top
+  theme_minimal() +
+  labs(title = "Validation Set MSE by Model",
+       x = "Model Type",
+       y = "Validation MSE") +
+  theme(legend.position = "none") #redundant legend
+```
+
+The best performing models perform right around 143-149 which means our RMSE for top performing models is right around 11.97-12.22. This suggests that picking our best model will be on average off by around 12%. This answers the first part of our question that, yes, we are able to predict a school's grad rate based on characteristics, but with error. 12% is not a small error in this context, meaning that this model isn't the most reliable.
+
+This answer can be used for prospective students looking at schools to attend. Graduation rate can be thought of as a metric of an institution's success.
+
+For the other part of our question, we hope to identify important variables. For this, I will only be looking at the top 3 performing models.
+
+```{r,echo=FALSE}
+rf_importance <- importance(bestRF)[, "%IncMSE"]
+top_5_rf <- head(sort(rf_importance, decreasing = TRUE), 5)
+
+bag_importance <- importance(bag)[, "%IncMSE"]
+top_5_bag <- head(sort(bag_importance, decreasing = TRUE), 5)
+
+boost_importance_table <- summary(boost, 
+                                  n.trees = optNumIterations, 
+                                  plotit = FALSE)
+top_5_boost <- head(boost_importance_table, 5)
+
+bag_imp <- importance(bag)[, "%IncMSE"]
+top_5_bag <- head(sort(bag_imp, decreasing = TRUE), 5)
+# This creates strings like "perc.alumni (25.32)"
+bag_formatted <- sprintf("%s (%.2f)", names(top_5_bag), top_5_bag)
+
+rf_imp <- importance(bestRF)[, "%IncMSE"]
+top_5_rf <- head(sort(rf_imp, decreasing = TRUE), 5)
+rf_formatted <- sprintf("%s (%.2f)", names(top_5_rf), top_5_rf)
+
+top_5_boost <- head(summary(boost, n.trees = optNumIterations, plotit = FALSE), 5)
+boost_formatted <- sprintf("%s (%.2f)", top_5_boost$var, top_5_boost$rel.inf)
+
+top_predictors <- data.frame(
+  Rank = 1:5,
+  Bagging = bag_formatted,
+  Random_Forest = rf_formatted,
+  Boosting = boost_formatted
+)
+
+top_predictors
+```
+
+To preface, both the bagging and random forest rank by % increase in MSE whereas boosting looks at relative influence, how much each variable reduced the squared error across all the sequential trees.
+
+With this said, there are some factors that are consistently ranked highly in all three models such as `perc.alumni`, `Room.Board`, `Top25perc`, and `Top10perc`. The other part to our question was to identify important factors that contribute to the `Grad.Rate`. It's safe to say that Pct. alumni who donate, room and board costs, and pct. new students from top 25% and 10% of their H.S class are some of the most important.
+
+It's helpful to identify these top factors, but schools need to realize they can't just treat variables like `Room.Board` and `perc.alumni` as quick fixes. You might assume that expensive room and board would push students away, but in this dataset, higher costs actually line up with higher graduation rates. This is likely because these financial metrics are essentially stand-ins for a school's overall wealth. Universities with high alumni donations and expensive housing usually have the budget to offer better academic support, nicer facilities, and stronger career networks. So, instead of just hiking up housing prices or begging for donations to game the numbers, universities should focus on what that money actually buys: a supportive, high-quality campus experience that naturally helps students stick around and earn their degrees.
+
+Students looking to attend college may use the pct. new students from top 25% and 10% of their H.S. class as a way to gauge competitiveness or popularity. The greater the pct., the more "talented" or "higher achieving" students there are.
+
+While I wouldn't rely exclusively on any single model to perfectly predict graduation rates, the underlying factors they identify are incredibly informative. It is clear that graduation rates are higher at universities with greater financial resources (reflected by higher room and board costs and alumni donations), likely due to an improved campus lifestyle and better student support systems.
+
+I selected the tuned Random Forest model because it minimized the out-of-bag and validation MSE while providing a stable, interpretable ranking of variable importance that aligned closely with the other ensemble methods. While predicting human behavior like graduation rates will always contain inherent error, this model provides institutions with an idea of which systemic factors most influence student success.
+
+##### Ethical Considerations
+
+When building machine learning models to predict human outcomes like graduation rates, we have to be really careful about how these predictions might be used in the real world.
+
+First, there is a massive risk of wealth bias. Because factors like `perc.alumni` and `Room.Board` are such strong predictors, this model essentially rewards wealthy schools. If educational policymakers or ranking systems used an algorithm like this to distribute funding, they would inherently punish universities that serve lower-income, first-generation, or non-traditional students. It penalizes those schools for who they serve rather than how well they teach, keeping them of the funding they actually need the most.
+
+Second, there is the danger of schools gaming the system. If a university sees that the percentage of incoming freshmen from the top 10% or 25% of their high school class (`Top10perc` and `Top25perc`) heavily drives their predicted success, they might start rejecting perfectly capable applicants just to keep their stats artificially high. This turns a metric into a target, which ultimately hurts overall accessibility to higher education.
+
+Finally, algorithms treat students as statistics, not people. If a model decides that certain financial backgrounds or demographics make a student "high risk" for dropping out, a university might unconsciously write those students off as a lost cause. Instead of stepping up to offer the extra support those students actually need, the institution might just let them fail because the algorithm said it was going to happen anyway.
