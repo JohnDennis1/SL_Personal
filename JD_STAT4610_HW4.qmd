@@ -21,3 +21,39 @@ format: pdf
 #### Part F
 
 #### Part G
+
+### Application Part
+
+```{r,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(keras)
+library(tidyr)
+library(mice)
+```
+
+#### Q1
+
+This analysis utilizes a dataset from a 2018 study (Woods et al.) to model the physiological strain of 13 male cyclists during a six-week training program. The primary objective is to develop a Neural Network regression model to predict blood lactate concentration (measured in mmol/L) based on performance metrics such as power output and heart rate (X). In endurance sports, blood lactate serves as a critical proxy for metabolic fatigue and "overreaching."
+
+The dataset follows a non-linear training load progression. As it starts from a 100% baseline to 150% "Loading" weeks and ends with two ~80% "Recovery" weeks, this creates high variance in the physiological response. The predictors I'll be using include `power_4000m` (in watts over 4000 meters), `hr_4000m`(in bpm over 4000m), and `power15sec` (in watts over full-out 15 sec sprint). In a perfect data set, there'd be more info on the athletes such as athlete weight, age, and caloric intake.
+
+Using a Neural Network to predict fatigue post workout may not be the best method, however, it is worth trying in an attempt to capture potentially complex non-linear relationship between the predictors and the response. A linear model may fail to capture the relationship, so using a spline or a flexible model may be preferred.
+
+Some ethical considerations is that this model is being trained and tested on data from men only suggesting that due to physiological differences, this may be incredibly inaccurate for women. Additionally, determining the impact a workout has will vary greatly between individuals and with neural networks being "black boxes" their interpretability is impossible. If coaches or teams were to use a neural network model to determine cuts or who's fit, the model may fail to recognize biological and physiological differences in athletes and produce unreliable results.
+
+#### Q2
+
+```{r, results='hide', fig.align = 'center', fig.width = 10, fig.height = 5}
+data <- read.csv("cycling.csv")
+
+#will be explained in Q3
+imputed_data_multiple <- mice(data, m = 5, method = 'pmm', seed = 413)
+
+#now with our "complete" dataset.
+data_clean <- complete(imputed_data_multiple, 1)
+
+densityplot(imputed_data_multiple)
+```
+
+#### Q3
