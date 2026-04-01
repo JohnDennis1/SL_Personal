@@ -54,6 +54,25 @@ imputed_data_multiple <- mice(data, m = 5, method = 'pmm', seed = 413)
 data_clean <- complete(imputed_data_multiple, 1)
 
 densityplot(imputed_data_multiple)
+
+# 1. Keep the ID during preparation
+data_prepared <- data_clean %>%
+  select(athlete, power_4000m, hr_4000m, power_15sec, lactate_4000m) %>%
+  mutate(across(c(power_4000m, hr_4000m, power_15sec), ~as.vector(scale(.))))
+
+# 2. Get a list of unique athletes and sample THEM
+unique_athletes <- unique(data_prepared$athlete)
+set.seed(303)
+train_ids <- sample(unique_athletes, size = floor(0.80 * length(unique_athletes)))
+
+# 3. Filter the main dataset based on those IDs
+training_set <- data_prepared %>% filter(athlete %in% train_ids)
+testing_set  <- data_prepared %>% filter(!(athlete %in% train_ids))
+
+# 4. NOW drop the athlete_id before feeding into Keras
+training_set <- training_set %>% select(-athlete)
+testing_set  <- testing_set  %>% select(-athlete)
 ```
+
 
 #### Q3
