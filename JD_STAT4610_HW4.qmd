@@ -1,0 +1,23 @@
+---
+title: "STAT4610_HW4"
+author: "John Dennis"
+format: pdf
+---
+
+### Problem 1
+
+#### Part A
+
+![Neural Net for Prob 10.10.1](Pictures/NeuralNet_HW.jpg)
+
+#### Part B
+
+#### Part C
+
+#### Part D
+
+#### Part E
+
+#### Part F
+
+#### Part G
