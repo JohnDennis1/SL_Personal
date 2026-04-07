@@ -30,13 +30,15 @@ library(ggplot2)
 library(keras)
 library(tidyr)
 library(mice)
+library(tensorflow)
+py_require("tensorflow")
 ```
 
 #### Q1
 
 This analysis utilizes a dataset from a 2018 study (Woods et al.) to model the physiological strain of 13 male cyclists during a six-week training program. The primary objective is to develop a Neural Network regression model to predict blood lactate concentration (measured in mmol/L) based on performance metrics such as power output and heart rate (X). In endurance sports, blood lactate serves as a critical proxy for metabolic fatigue and "overreaching."
 
-The dataset follows a non-linear training load progression. As it starts from a 100% baseline to 150% "Loading" weeks and ends with two ~80% "Recovery" weeks, this creates high variance in the physiological response. The predictors I'll be using include `power_4000m` (in watts over 4000 meters), `hr_4000m`(in bpm over 4000m), and `power15sec` (in watts over full-out 15 sec sprint). In a perfect data set, there'd be more info on the athletes such as athlete weight, age, and caloric intake.
+The dataset follows a non-linear training load progression. As it starts from a 100% baseline to 150% "Loading" weeks and ends with two \~80% "Recovery" weeks, this creates high variance in the physiological response. The predictors I'll be using include `power_4000m` (in watts over 4000 meters), `hr_4000m`(in bpm over 4000m), and `power15sec` (in watts over full-out 15 sec sprint). In a perfect data set, there'd be more info on the athletes such as athlete weight, age, and caloric intake.
 
 Using a Neural Network to predict fatigue post workout may not be the best method, however, it is worth trying in an attempt to capture potentially complex non-linear relationship between the predictors and the response. A linear model may fail to capture the relationship, so using a spline or a flexible model may be preferred.
 
@@ -44,35 +46,116 @@ Some ethical considerations is that this model is being trained and tested on da
 
 #### Q2
 
+Prior to any training, the data we have needs to be preprocessed due to the number of missing values there are. We can't handle this simply by removing the row or else we'd lose too much information. Instead after loading the `mice` library, we use Predictive Mean Matching (**PMM**) to estimate missing values. PMM works by building a regression model to predict values and then it finds $k$ complete cases with the closest predicted value. Of these cases, will have it's observed value be the missing value.
+
 ```{r, results='hide', fig.align = 'center', fig.width = 10, fig.height = 5}
+# 1. Load and Impute Data
 data <- read.csv("cycling.csv")
+imp_data <- mice(data, m = 5, method = 'pmm', seed = 303)
+complete_data <- complete(imp_data,1)
+densityplot(imp_data)
+```
 
-#will be explained in Q3
-imputed_data_multiple <- mice(data, m = 5, method = 'pmm', seed = 413)
+Following the preprocessing step, we z-score scale the data to allow the neural network to not be skewed or biased towards any particular predictor. The data is then split by Athlete ID so we're training on the same humans and testing on unseen athletes, rather than having a mix of everyone's metrics. It's important to note that the ID is dropped after separating to randomize the athletes' data once separated.
 
-#now with our "complete" dataset.
-data_clean <- complete(imputed_data_multiple, 1)
+The Neural Network is constructed using 1 input layer, 2 hidden layers, and 1 output layer that's continuous for predicting lactate
 
-densityplot(imputed_data_multiple)
-
-# 1. Keep the ID during preparation
-data_prepared <- data_clean %>%
+```{r, results='hide', message=FALSE, warning=FALSE,echo=FALSE}
+# 2. Scale Data (Keeping 'athlete' for the split)
+data_prepared <- complete_data %>%
   select(athlete, power_4000m, hr_4000m, power_15sec, lactate_4000m) %>%
   mutate(across(c(power_4000m, hr_4000m, power_15sec), ~as.vector(scale(.))))
 
-# 2. Get a list of unique athletes and sample THEM
-unique_athletes <- unique(data_prepared$athlete)
+# 3. Create Data Splits (Using data frames, doing this BEFORE matrix conversion)
 set.seed(303)
+unique_athletes <- unique(data_prepared$athlete)
 train_ids <- sample(unique_athletes, size = floor(0.80 * length(unique_athletes)))
 
-# 3. Filter the main dataset based on those IDs
-training_set <- data_prepared %>% filter(athlete %in% train_ids)
-testing_set  <- data_prepared %>% filter(!(athlete %in% train_ids))
+# Filter Train vs Test
+df_train <- data_prepared %>% filter(athlete %in% train_ids)
+df_test  <- data_prepared %>% filter(!(athlete %in% train_ids))
 
-# 4. NOW drop the athlete_id before feeding into Keras
-training_set <- training_set %>% select(-athlete)
-testing_set  <- testing_set  %>% select(-athlete)
+# Filter Train vs Validation (20% of Training)
+val_idx <- sample(seq_len(nrow(df_train)), size = floor(0.2 * nrow(df_train)))
+df_val  <- df_train[val_idx, ]
+df_train_final <- df_train[-val_idx, ]
+
+# 4. Helper Function: Convert direct from Data Frame to Tensor
+# This eliminates all the redundant as.matrix() and select() calls
+to_tensor <- function(df, is_target = FALSE) {
+  if (is_target) {
+    mat <- as.matrix(df %>% select(lactate_4000m))
+  } else {
+    mat <- as.matrix(df %>% select(-athlete, -lactate_4000m))
+  }
+  return(as_tensor(unname(mat), dtype = tf$float32))
+}
+
+# 5. Generate Tensors
+x_train <- to_tensor(df_train_final)
+y_train <- to_tensor(df_train_final, is_target = TRUE)
+
+x_val <- to_tensor(df_val)
+y_val <- to_tensor(df_val, is_target = TRUE)
+
+x_test <- to_tensor(df_test)
+y_test <- to_tensor(df_test, is_target = TRUE)
+
+# 6. Build and Compile Model
+modelnn <- keras_model_sequential(layers = list(
+  layer_input(shape = c(3)), 
+  layer_dense(units = 128, activation = "relu"),
+  layer_dropout(rate = 0.4),
+  layer_dense(units = 64, activation = "relu"),
+  layer_dropout(rate = 0.3),
+  layer_dense(units = 1)
+))
+
+modelnn$compile(
+  optimizer = optimizer_rmsprop(),
+  loss = "mse",
+  metrics = list("mae")
+)
+
+# 7. Train Model
+history <- modelnn$fit(
+  x = x_train, 
+  y = y_train,
+  epochs = 100L,
+  batch_size = 32L,
+  validation_data = list(x_val, y_val),
+  verbose = 0
+)
+
+# 8. Evaluate Unseen Athletes
+results <- modelnn$evaluate(x_test, y_test)
 ```
 
+```{r,echo=FALSE}
+cat(sprintf("The MSE loss is %.3f and the MAE is %.3f, after looking at unseen \n
+athletes",results[1],results[2]))
+```
+
+```{r, echo=FALSE,warning=FALSE, fig.align = 'center'}
+# 1. Extract the raw numbers from the Python history object into a dataframe
+hist_df <- as.data.frame(history$history)
+
+# 2. Add an 'epoch' column (1 to 100)
+hist_df$epoch <- 1:nrow(hist_df)
+
+# 3. Plot Training vs. Validation Loss (MSE)
+ggplot(hist_df, aes(x = epoch)) +
+  geom_line(aes(y = loss, color = "Training Loss"), size = 1) +
+  geom_line(aes(y = val_loss, color = "Validation Loss"), size = 1) +
+  scale_color_manual(values = c("Training Loss" = "skyblue", "Validation Loss" = "orange")) +
+  labs(
+    title = "Neural Network Training History",
+    subtitle = "Tracking Mean Squared Error over 100 Epochs",
+    x = "Epoch",
+    y = "Loss (MSE)",
+    color = "Dataset"
+  ) +
+  theme_bw()
+```
 
 #### Q3
