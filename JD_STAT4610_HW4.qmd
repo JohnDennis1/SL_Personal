@@ -46,7 +46,7 @@ Some ethical considerations is that this model is being trained and tested on da
 
 #### Q2
 
-Prior to any training, the data we have needs to be preprocessed due to the number of missing values there are. We can't handle this simply by removing the row or else we'd lose too much information. Instead after loading the `mice` library, we use Predictive Mean Matching (**PMM**) to estimate missing values. PMM works by building a regression model to predict values and then it finds $k$ complete cases with the closest predicted value. Of these cases, will have it's observed value be the missing value.
+Prior to any training, the data we have needs to be preprocessed due to the number of missing values there are. We can't handle this simply by removing the row or else we'd lose too much information. Instead after loading the `mice` library, we use Predictive Mean Matching (**PMM**) to estimate missing values. PMM works by building a regression model to predict values and then it finds $k$ complete cases with the closest predicted value. Of these cases, one will have it's observed value be the missing value.
 
 ```{r, results='hide', fig.align = 'center', fig.width = 10, fig.height = 5}
 # 1. Load and Impute Data
@@ -58,7 +58,7 @@ densityplot(imp_data)
 
 Following the preprocessing step, we z-score scale the data to allow the neural network to not be skewed or biased towards any particular predictor. The data is then split by Athlete ID so we're training on the same humans and testing on unseen athletes, rather than having a mix of everyone's metrics. It's important to note that the ID is dropped after separating to randomize the athletes' data once separated.
 
-The Neural Network is constructed using 1 input layer, 2 hidden layers, and 1 output layer that's continuous for predicting lactate
+The Neural Network is constructed using 1 input layer, 2 hidden layers, and 1 output layer that's continuous for predicting lactate in the blood. The first hidden layer contains 128 nodes while the second has 64, both using ReLU activation functions.
 
 ```{r, results='hide', message=FALSE, warning=FALSE,echo=FALSE}
 # 2. Scale Data (Keeping 'athlete' for the split)
@@ -104,15 +104,15 @@ y_test <- to_tensor(df_test, is_target = TRUE)
 # 6. Build and Compile Model
 modelnn <- keras_model_sequential(layers = list(
   layer_input(shape = c(3)), 
-  layer_dense(units = 128, activation = "relu"),
-  layer_dropout(rate = 0.4),
-  layer_dense(units = 64, activation = "relu"),
-  layer_dropout(rate = 0.3),
+  layer_dense(units = 20, activation = "relu"),
+  layer_dropout(rate = 0.1),
+  layer_dense(units = 12, activation = "relu"),
+  layer_dropout(rate = 0.1),
   layer_dense(units = 1)
 ))
 
 modelnn$compile(
-  optimizer = optimizer_rmsprop(),
+  optimizer = optimizer_adam(),
   loss = "mse",
   metrics = list("mae")
 )
@@ -132,9 +132,15 @@ results <- modelnn$evaluate(x_test, y_test)
 ```
 
 ```{r,echo=FALSE}
-cat(sprintf("The MSE loss is %.3f and the MAE is %.3f, after looking at unseen \n
+cat(sprintf("The MSE loss is %.3f and the MAE is %.3f, after looking at unseen
 athletes",results[1],results[2]))
 ```
+
+To give some context, average lactate in blood without exercise ranges from 0.5-2.0 mmol/L while with intense exercise, lactate values can spike up to 20 mmol/L.
+
+![Table for Exertion](Pictures/Exertion_table.jpg){width=60%}
+
+Looking at the table, we can get an idea for zones, not just heart rate, but we can also look at lactate thresholds. It's easy to see that an MAE of 3.589 can greatly affect which zone an athlete is in. This is to suggest that the model isn't the most reliable and shouldn't be used as a tool for determining
 
 ```{r, echo=FALSE,warning=FALSE, fig.align = 'center'}
 # 1. Extract the raw numbers from the Python history object into a dataframe
