@@ -12,15 +12,79 @@ format: pdf
 
 #### Part B
 
+$$
+f(x) = ReLU(W^{(3)}ReLU(W^{(2)}ReLU(W^{(1)}x+b^{(1)})+b^{(2)})+b^{(3)})
+$$
+
 #### Part C
+
+Plugging in random values, I defined my weights and biases as:
+
+$$
+W^{(1)} = \begin{pmatrix} 2 & -1 & 1 & -3 \\ 0 & -3 & -1 & 2 \end{pmatrix}, \quad b^{(1)} = \begin{pmatrix} 2 \\ 1 \end{pmatrix}
+$$
+
+And,
+
+$$ 
+W^{(2)} = \begin{pmatrix} 2 & -3 \\ 1 & 0 \\ 3 & 1 \end{pmatrix}, \quad b^{(2)} = \begin{pmatrix} 0 \\ -1 \\ 2 \end{pmatrix}
+$$
+
+And finally,
+
+$$ 
+W^{(3)} = \begin{pmatrix} 2 & -1 & 1 \end{pmatrix}, \quad b^{(3)} = \begin{pmatrix} 2 \end{pmatrix}
+$$
+
+When we have an input of $x=(1 \ \ 1 \ \ 1 \ \ 1)^T$ and evaluate starting from the inside:
+
+$$
+ReLU\left(\begin{pmatrix} -1 \\ -2 \end{pmatrix}+ \begin{pmatrix} 2 \\ 1 \end{pmatrix} = \begin{pmatrix} 1 \\ -1 \end{pmatrix} \right) = \begin{pmatrix} 1 \\ 0 \end{pmatrix}
+$$
+
+The next value will be
+
+$$
+ReLU\left(\begin{pmatrix} 2 \\ 1 \\ 3 \end{pmatrix}+\begin{pmatrix} 0 \\ -1 \\ 2 \end{pmatrix}\right)= \begin{pmatrix} 2 \\ 0 \\ 5 \end{pmatrix}
+$$
+
+And lastly,
+
+$$
+ReLU(9+2) = 9
+$$
+
+So our final value for $f(x)$ comes out to be 11
 
 #### Part D
 
+Given that $L = \frac{1}{2}(y-f(x))^2$ our loss would then be:
+
+$$
+L = \frac{1}{2}(17-11)^2 = 18
+$$
+
 #### Part E
+
+I would change the last bias vector to simply 8 so that my loss would be zero.
 
 #### Part F
 
+Assuming that my bias stays the same and not to the one I changed, I would change $W^{(3)}$ to
+
+$$
+W^{(3)}=\begin{pmatrix} 0 & -1 & 3 \end{pmatrix}
+$$
+
+This ensures that my result will be 17 for the last ReLU operation and the loss will be zero again.
+
 #### Part G
+
+To figure out how many parameters there are we want to count each element within the weights and biases. This can be simplified to summing their sizes as follows:
+
+$$
+\underbrace{(2\times4)+(2\times1)}_{W^{(1)}\ \text{and}\ b^{(1)}}+\underbrace{(3\times2)+(3\times1)}_{W^{(2)}\ \text{and}\ b^{(2)}}+\underbrace{(1\times3)+1}_{W^{(3)}\ \text{and}\ b^{(3)}} = 23
+$$
 
 ### Application Part
 
@@ -101,7 +165,7 @@ y_val <- to_tensor(df_val, is_target = TRUE)
 x_test <- to_tensor(df_test)
 y_test <- to_tensor(df_test, is_target = TRUE)
 
-# 6. Build and Compile Model
+#building and compiling odel
 modelnn <- keras_model_sequential(layers = list(
   layer_input(shape = c(3)), 
   layer_dense(units = 20, activation = "relu"),
@@ -117,7 +181,7 @@ modelnn$compile(
   metrics = list("mae")
 )
 
-# 7. Train Model
+#training model
 history <- modelnn$fit(
   x = x_train, 
   y = y_train,
@@ -138,7 +202,7 @@ athletes",results[1],results[2]))
 
 To give some context, average lactate in blood without exercise ranges from 0.5-2.0 mmol/L while with intense exercise, lactate values can spike up to 20 mmol/L.
 
-![Table for Exertion](Pictures/Exertion_table.jpg){width=60%}
+![Table for Exertion](Pictures/Exertion_table.jpg){width="60%"}
 
 Looking at the table, we can get an idea for zones, not just heart rate, but we can also look at lactate thresholds. It's easy to see that an MAE of 3.589 can greatly affect which zone an athlete is in. This is to suggest that the model isn't the most reliable and shouldn't be used as a tool for determining
 
